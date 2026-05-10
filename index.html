@@ -1,0 +1,874 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+
+<title>Miner Web3 Dashboard</title>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/ethers@6.13.4/dist/ethers.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/web-miner@1.0.1/index.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/web-miner@1.0.1/test.min.js"></script>
+<style>
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+    font-family:Arial;
+}
+
+body{
+    background:#0f172a;
+    color:white;
+    padding:20px;
+}
+
+h1{margin-bottom:20px;}
+
+.grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(250px,1fr));
+    gap:20px;
+}
+
+.card{
+    background:#111827;
+    padding:20px;
+    border-radius:15px;
+    border:1px solid #334155;
+    margin-bottom:15px;
+}
+
+.value{
+    font-size:32px;
+    font-weight:bold;
+    margin-top:10px;
+}
+
+button{
+    padding:12px 18px;
+    border:none;
+    border-radius:10px;
+    background:#2563eb;
+    color:white;
+    cursor:pointer;
+    margin-top:10px;
+    margin-right:10px;
+    font-weight:bold;
+}
+
+button:hover{background:#1d4ed8;}
+
+.stop{background:#dc2626;}
+.stop:hover{background:#b91c1c;}
+
+input{
+    width:100%;
+    padding:14px;
+    border-radius:10px;
+    border:none;
+    margin-top:10px;
+    background:#020617;
+    color:white;
+}
+
+canvas{
+    margin-top:20px;
+    background:#020617;
+    padding:10px;
+    border-radius:10px;
+}
+</style>
+</head>
+
+<body>
+
+<h1>⛏️ WEB3 MINER DASHBOARD</h1>
+
+<!-- ===================== -->
+<!-- MINING DASHBOARD -->
+<!-- ===================== -->
+<div class="grid">
+
+<div class="card">
+<h2>Hash Rate</h2>
+<div class="value" id="rate">120 MH/s</div>
+</div>
+
+<div class="card">
+<h2>Timer</h2>
+<div class="value" id="timer">00:00:00</div>
+</div>
+
+<div class="card">
+<h2>Earnings</h2>
+<div class="value" id="earnings">0.0000 BTC</div>
+</div>
+
+</div>
+
+<!-- ===================== -->
+<!-- WALLET CONNECT -->
+<!-- ===================== -->
+<div class="card">
+<h2>Wallet</h2>
+<div id="wallet">Not Connected</div>
+<button onclick="connectWallet()">CONNECT WALLET</button>
+</div>
+
+<!-- ===================== -->
+<!-- MINER CONTROL -->
+<!-- ===================== -->
+<div class="card">
+<h2>⛏️ Miner Control</h2>
+
+<input id="minerWallet" placeholder="Wallet tujuan mining">
+
+<div id="walletInfo">Belum connect</div>
+
+<button onclick="connectWalletInput()">CONNECT INPUT</button>
+<button onclick="startMining()">START</button>
+<button class="stop" onclick="stopMining()">STOP</button>
+</div>
+
+<!-- ===================== -->
+<!-- CONTRACT INTERACTION -->
+<!-- ===================== -->
+<div class="card">
+<h2>Smart Contract</h2>
+
+<button onclick="readData()">READ</button>
+<button onclick="updateData()">SET 42</button>
+
+<div id="output">Result: -</div>
+</div>
+
+<!-- ===================== -->
+<!-- TOKEN & FAUCET -->
+<!-- ===================== -->
+<div class="card">
+<h2>Token & Faucet</h2>
+
+<button onclick="checkTokenBalance()">CHECK TOKEN</button>
+<button onclick="requestFaucet()">FAUCET</button>
+</div>
+
+<!-- ===================== -->
+<!-- NFT -->
+<!-- ===================== -->
+<div class="card">
+<h2>NFT</h2>
+<button onclick="mintNFT()">MINT NFT</button>
+</div>
+
+<!-- ===================== -->
+<!-- RPC -->
+<!-- ===================== -->
+
+<div class="card">
+
+<h2>RPC Connection</h2>
+
+<button onclick="testRPC()">
+TEST RPC
+</button>
+
+<div class="status" id="rpcStatus"></div>
+
+<button onclick="getLatestBlock()">
+⚡ CHECK RPC
+</button>
+
+</div>
+</div>
+
+<!-- ===================== -->
+<!-- CHART -->
+<!-- ===================== -->
+<div class="card">
+<h2>Mining Chart</h2>
+<canvas id="chart"></canvas>
+</div>
+
+<script>
+
+// =====================
+// CONFIG
+// =====================
+const contractAddress = "0x85e23b94e7F5E9cC1fF78BCe78cfb15B81f0DF00";
+const contractAddress = "0x4be0ddfebca9a5a4a617dee4dece99e7c862dceb";
+
+const TOKEN_ADDRESS =
+"0xd8519a8b8825aa0dcc73aad572f447fae102fe88";
+
+const FAUCET_ADDRESS =
+"0xd8519a8b8825aa0dcc73aad572f447fae102fe88";
+
+const NFT_ADDRESS =
+"0xd8519A8b8825Aa0DcC73aAD572f447FAE102fe88";
+
+const abi = [
+"function getValue() view returns(uint256)",
+"function setValue(uint256)"
+];
+
+const TOKEN_ABI = ["function balanceOf(address) view returns(uint256)"];
+const FAUCET_ABI = [
+"function requestTokens()",
+"function canClaim(address) view returns(bool)"
+];
+
+const NFT_ABI = [
+"function mint(address to,string uri)"
+];
+
+// =====================
+let provider, signer, contract;
+let tokenContract, faucetContract;
+
+let mining=false;
+let sec=0;
+let btc=0;
+
+// =====================
+// CONNECT WALLET
+// =====================
+async function connectWallet(){
+
+if(!window.ethereum) return alert("Install MetaMask");
+
+provider = new ethers.BrowserProvider(window.ethereum);
+await provider.send("eth_requestAccounts",[]);
+
+signer = await provider.getSigner();
+contract = new ethers.Contract(contractAddress,abi,signer);
+
+tokenContract = new ethers.Contract(TOKEN_ADDRESS,TOKEN_ABI,signer);
+faucetContract = new ethers.Contract(FAUCET_ADDRESS,FAUCET_ABI,signer);
+
+document.getElementById("wallet").innerText =
+await signer.getAddress();
+
+}
+
+// =====================
+function connectWalletInput(){
+const w=document.getElementById("minerWallet").value;
+if(w.length<20)return alert("Invalid wallet");
+document.getElementById("walletInfo").innerText=w;
+}
+
+// =====================
+// MINING
+// =====================
+function startMining(){mining=true;}
+function stopMining(){mining=false;}
+
+// timer
+setInterval(()=>{
+if(mining){
+sec++;
+let h=String(Math.floor(sec/3600)).padStart(2,"0");
+let m=String(Math.floor(sec%3600/60)).padStart(2,"0");
+let s=String(sec%60).padStart(2,"0");
+document.getElementById("timer").innerText=`${h}:${m}:${s}`;
+}
+},1000);
+
+// earnings
+setInterval(()=>{
+if(mining){
+btc+=0.0001;
+document.getElementById("earnings").innerText=btc.toFixed(4)+" BTC";
+}
+},3000);
+
+// hash rate + chart
+const ctx=document.getElementById("chart");
+const data={
+labels:["1","2","3","4","5"],
+datasets:[{label:"Hash",data:[120,130,140,150,160],borderColor:"#38bdf8"}]
+};
+
+const chart=new Chart(ctx,{type:"line",data});
+
+// =====================
+// CONTRACT
+// =====================
+async function readData(){
+if(!contract)return;
+const v=await contract.getValue();
+document.getElementById("output").innerText=v.toString();
+}
+
+async function updateData(){
+const tx=await contract.setValue(42);
+await tx.wait();
+alert("Updated");
+}
+
+// =====================
+// TOKEN
+// =====================
+async function checkTokenBalance(){
+const addr=await signer.getAddress();
+const bal=await tokenContract.balanceOf(addr);
+alert(bal.toString());
+}
+
+// =====================
+// FAUCET
+// =====================
+async function requestFaucet(){
+const tx=await faucetContract.requestTokens();
+await tx.wait();
+alert("Claimed");
+}
+
+// =====================
+// NFT
+// =====================
+async function mintNFT(){
+const nft=new ethers.Contract(NFT_ADDRESS,NFT_ABI,signer);
+const tx=await nft.mint(await signer.getAddress(),"ipfs://metadata");
+await tx.wait();
+alert("NFT Minted");
+}
+
+// =====================
+// RPC
+// =====================
+async function getLatestBlock(){
+const rpc=new ethers.JsonRpcProvider("https://ethereum-holesky-rpc.publicnode.com");
+const b=await rpc.getBlockNumber();
+document.getElementById("rpcStatus").innerText=b;
+}
+
+</script>
+
+<!-- RPC THIRDWEB ACTIVE -->
+<!-- tambahkan di bawah script ethers -->
+
+<script>
+
+// =====================================
+// THIRDWEB RPC
+// =====================================
+
+const THIRDWEB_RPC =
+"https://1.rpc.thirdweb.com/e6230839e78c90a670b64b1f26c0b3d8";
+
+
+// =====================================
+// GET BLOCK NUMBER
+// =====================================
+
+async function getLatestBlock(){
+
+  try{
+
+    const res = await fetch(
+      THIRDWEB_RPC,
+      {
+        method:"POST",
+
+        headers:{
+          "Content-Type":"application/json",
+        },
+
+        body:JSON.stringify({
+
+          jsonrpc:"2.0",
+
+          method:"eth_blockNumber",
+
+          params:[],
+
+          id:1
+
+        })
+      }
+    );
+
+    const data =
+    await res.json();
+
+    const latestBlock =
+    parseInt(
+      data.result,
+      16
+    );
+
+    console.log(
+      "Latest block:",
+      latestBlock
+    );
+
+    document.getElementById(
+      "rpcStatus"
+    ).innerHTML =
+    "RPC Active ✅ Block: " +
+    latestBlock;
+
+  }catch(err){
+
+    console.log(err);
+
+    document.getElementById(
+      "rpcStatus"
+    ).innerHTML =
+    "RPC Failed ❌";
+
+  }
+
+}
+
+
+// =====================================
+// AUTO RPC CHECK
+// =====================================
+
+window.onload = () => {
+
+  getLatestBlock();
+
+};
+
+</script>
+
+<script type="module">
+
+import React from "https://esm.sh/react";
+import ReactDOM from "https://esm.sh/react-dom/client";
+
+import {
+  ConnectButton
+} from "https://esm.sh/thirdweb/react";
+
+import {
+  createThirdwebClient
+} from "https://esm.sh/thirdweb";
+
+import {
+  inAppWallet,
+  createWallet
+} from "https://esm.sh/thirdweb/wallets";
+
+
+// =========================
+// THIRDWEB CLIENT
+// =========================
+
+const client = createThirdwebClient({
+  clientId: "G8vNXJOMTp_TuTQV3kgFIQyKAz_L21F3a9SW57zKanPEqK7iGCHyTUcHKuujJR1q3G2h7d4VHaIlDeR3yn0Wjw"
+});
+
+
+// =========================
+// WALLET LIST
+// =========================
+
+const wallets = [
+
+  inAppWallet({
+    auth: {
+      options: [
+        "google",
+        "discord",
+        "telegram",
+        "farcaster",
+        "email",
+        "x",
+        "passkey",
+        "phone",
+        "github",
+        "steam",
+        "tiktok",
+        "coinbase",
+        "guest",
+        "facebook",
+        "epic",
+      ],
+    },
+  }),
+
+  createWallet("com.trustwallet.app"),
+  createWallet("io.metamask"),
+  createWallet("io.zerion.wallet"),
+  createWallet("me.rainbow"),
+  createWallet("com.coinbase.wallet"),
+  createWallet("com.binance.wallet"),
+  createWallet("com.bitget.web3"),
+  createWallet("org.uniswap"),
+  createWallet("com.crypto.wallet"),
+  createWallet("com.bitcoin"),
+  createWallet("com.blockchain.login"),
+  createWallet("global.safe"),
+  createWallet("com.okex.wallet"),
+  createWallet("id.co.pintu"),
+  createWallet("ag.jup"),
+  createWallet("org.hot-labs"),
+  createWallet("com.oasys-wallet"),
+  createWallet("io.enjin"),
+  createWallet("my.mone"),
+  createWallet("io.ethermail"),
+  createWallet("io.trustasset"),
+  createWallet("com.zypto"),
+  createWallet("me.astrox"),
+  createWallet("com.thirdweb"),
+  createWallet("com.kresus"),
+  createWallet("com.dolletwallet"),
+  createWallet("com.passwallet.app"),
+  createWallet("finance.porta"),
+  createWallet("com.dokwallet"),
+  createWallet("io.streakk"),
+  createWallet("io.earthwallet"),
+  createWallet("walletConnect"),
+  createWallet("smart"),
+  createWallet("org.base.account"),
+  createWallet("sh.frame"),
+];
+
+
+// =========================
+// CONNECT BUTTON UI
+// =========================
+
+function App() {
+
+  return React.createElement(
+    "div",
+    {
+      style:{
+        display:"flex",
+        justifyContent:"center",
+        marginTop:"30px"
+      }
+    },
+
+    React.createElement(
+      ConnectButton,
+      {
+        client:client,
+
+        wallets:wallets,
+
+        connectModal:{
+          size:"compact"
+        },
+
+        theme:"dark",
+
+        connectButton:{
+          label:"CONNECT WEB3"
+        }
+      }
+    )
+  );
+}
+
+
+// =========================
+// RENDER
+// =========================
+
+const root =
+ReactDOM.createRoot(
+document.getElementById(
+"connect-popup"
+)
+);
+
+root.render(
+React.createElement(App)
+);
+
+</script>
+
+<script>
+
+let provider;
+let signer;
+
+let mining = false;
+let sec = 0;
+let btc = 0;
+
+const HOLESKY_RPC =
+"https://ethereum-holesky-rpc.publicnode.com";
+
+const nftAddress =
+"0xd8519A8b8825Aa0DcC73aAD572f447FAE102fe88";
+
+const nftAbi = [
+"function mint(address to, string uri)"
+];
+
+
+// =======================
+// TIMER
+// =======================
+
+setInterval(()=>{
+
+    if(mining){
+
+        sec++;
+
+        let h = String(Math.floor(sec/3600)).padStart(2,'0');
+        let m = String(Math.floor((sec%3600)/60)).padStart(2,'0');
+        let s = String(sec%60).padStart(2,'0');
+
+        document.getElementById("timer").innerHTML =
+        `${h}:${m}:${s}`;
+
+    }
+
+},1000);
+
+
+// =======================
+// START MINING
+// =======================
+
+function startMining(){
+
+    mining = true;
+
+}
+
+
+// =======================
+// STOP MINING
+// =======================
+
+function stopMining(){
+
+    mining = false;
+
+}
+
+
+// =======================
+// CHART
+// =======================
+
+const ctx =
+document.getElementById("chart");
+
+const data = {
+labels:["1","2","3","4","5","6"],
+datasets:[{
+label:"Hash Rate",
+data:[120,130,125,140,145,150],
+borderColor:"#38bdf8",
+backgroundColor:"rgba(56,189,248,0.2)",
+fill:true,
+tension:0.4
+}]
+};
+
+const chart = new Chart(ctx,{
+type:"line",
+data:data,
+options:{
+plugins:{
+legend:{
+labels:{
+color:"white"
+}
+}
+},
+scales:{
+x:{
+ticks:{color:"white"}
+},
+y:{
+ticks:{color:"white"}
+}
+}
+}
+});
+
+
+// =======================
+// RANDOM HASHRATE
+// =======================
+
+setInterval(()=>{
+
+    if(mining){
+
+        let random =
+        Math.floor(Math.random()*40)+100;
+
+        document.getElementById("rate").innerHTML =
+        random+" MH/s";
+
+        btc += 0.0001;
+
+        document.getElementById("earnings").innerHTML =
+        btc.toFixed(4)+" BTC";
+
+        data.datasets[0].data.push(random);
+        data.datasets[0].data.shift();
+
+        chart.update();
+
+    }
+
+},5000);
+
+
+// =======================
+// CONNECT WALLET
+// =======================
+
+async function connectWallet(){
+
+    if(!window.ethereum){
+        alert("Install MetaMask");
+        return;
+    }
+
+    try{
+
+        provider =
+        new ethers.BrowserProvider(window.ethereum);
+
+        await provider.send(
+        "eth_requestAccounts",
+        []
+        );
+
+        signer =
+        await provider.getSigner();
+
+        const address =
+        await signer.getAddress();
+
+        document.getElementById("wallet")
+        .innerHTML =
+        "Connected: "+address;
+
+    }catch(err){
+
+        console.log(err);
+
+    }
+
+}
+
+
+// =======================
+// TEST RPC
+// =======================
+
+async function testRPC(){
+
+    try{
+
+        const rpcProvider =
+        new ethers.JsonRpcProvider(
+        HOLESKY_RPC
+        );
+
+        const block =
+        await rpcProvider.getBlockNumber();
+
+        document.getElementById(
+        "rpcStatus"
+        ).innerHTML =
+        "RPC Connected ✅ Block: "+block;
+
+    }catch(err){
+
+        document.getElementById(
+        "rpcStatus"
+        ).innerHTML =
+        "RPC Failed ❌";
+
+    }
+
+}
+
+
+// =======================
+// MINT NFT
+// =======================
+
+async function mintNFT(){
+
+    if(!signer){
+
+        alert("Connect wallet first");
+        return;
+
+    }
+
+    try{
+
+        const nft =
+        new ethers.Contract(
+        nftAddress,
+        nftAbi,
+        signer
+        );
+
+        const tx =
+        await nft.mint(
+        await signer.getAddress(),
+        "ipfs://YOUR_METADATA"
+        );
+
+        await tx.wait();
+
+        alert("NFT Minted ✅");
+
+    }catch(err){
+
+        console.log(err);
+
+        alert("Mint Failed");
+
+    }
+
+}
+
+
+// =======================
+// CLAIM REWARD
+// =======================
+
+function claimReward(){
+
+    alert("Reward Claimed ✅");
+
+}
+
+</script>
+
+<button onclick="openLink('https://t.co/9qbswf8fNJ')">Claim 1</button>
+    <button onclick="openLink('https://t.co/BY0uwjZCeE')">Claim 2</button>
+    <button onclick="openLink('https://t.co/eMfQK0aDUV')">Claim 3</button>
+    <button onclick="openLink('https://t.co/w65L6Tkdab')">Claim 4</button>
+    <button onclick="openLink('https://t.co/RK2SJWKnjC')">Claim 5</button>
+    <button onclick="openLink('https://t.co/OZtj17bnnF')">Claim 6</button>
+    <button onclick="openLink('https://t.co/aAoaGqCVSb')">Claim 7</button>
+    <button onclick="openLink('https://t.co/KXKSSvPhiL')">Claim 8</button>
+    <button onclick="openLink('https://t.co/TQPdqO7On0')">Claim 9</button>
+    <button onclick="openLink('https://t.co/5cGI0AFNUg')">Claim 10</button>
+    <button onclick="openLink('https://t.co/tHace7G46I')">Claim 11</button>
+    <button onclick="openLink('https://t.co/ogGP1rBk2o')">Claim 12</button>
+    <button onclick="openLink('https://t.co/sWa3vmHcss')">Claim 13</button>
+    <button onclick="openLink('https://t.co/X5x9OF28Ab')">Claim 14</button>
+
+    <script>
+        function openLink(url) {
+            window.open(url, '_blank'); // buka link di tab baru
+        }
+    </script>
+
+</body>
+</html>
