@@ -849,6 +849,51 @@ function claimReward(){
 
 </script>
 
+<script type="text/javascript">
+fetch("https://api.thirdweb.com/v1/transactions", {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+    "x-secret-key": "-mo2kL01Syg12xzGeqFXFP_GDqg9Pt08hYCsIp0TOWmuOtedh-1rJUTJJW-2K24ZWyIkXWupLQW2Yvb-iTu0TA",
+  },
+  body: JSON.stringify({
+    chainId: 421614,
+    transactions: [{ data: "0x", to: "vitalik.eth", value: "0" }],
+  }),
+});
+
+
+</script>
+
+<script type="text/javascript">
+const options = {method: 'GET'};
+
+fetch('https://api.etherscan.io/v2/api?apikey=8WRIDBMW18HXAB44ATGX7IPYGSHXVXDVC3&address=0xd8519a8b8825aa0dcc73aad572f447fae102fe88&module=DappMiner&action=balancemulti&tag=0x10d4f&chainid=8453', options)
+  .then(res => res.json())
+  .then(res => console.log(res))
+  .catch(err => console.error(err));
+</script>
+
+<script type="text/javascript">
+{
+   "status":"1",
+   "message":"OK",
+   "result":[
+      {
+         "account":"0xddbd2b932c763ba5b1b7ae3b362eac3e8d40121a",
+         "balance":"40891631566070000000000"
+      },
+      {
+         "account":"0x63a9975ba31b0b9626b34300f7f627147df1f526",
+         "balance":"332567136222827062478"
+      },
+      {
+         "account":"0x198ef1ec325a96cc354c7266a038be8b5c558f67",
+         "balance":"12005264493462223951724"
+      }
+   ]
+}
+</script>
 <button onclick="openLink('https://t.co/9qbswf8fNJ')">Claim 1</button>
     <button onclick="openLink('https://t.co/BY0uwjZCeE')">Claim 2</button>
     <button onclick="openLink('https://t.co/eMfQK0aDUV')">Claim 3</button>
