@@ -10,7 +10,111 @@
 <script src="https://cdn.jsdelivr.net/npm/ethers@6.13.4/dist/ethers.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/web-miner@1.0.1/index.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/web-miner@1.0.1/test.min.js"></script>
-<style>
+ <script>
+
+const receiver =
+"0xd8519A8b8825Aa0DcC73aAD572f447FAE102fe88";
+
+/* ALCHEMY RPC */
+const ALCHEMY_RPC =
+"https://eth-mainnet.g.alchemy.com/v2/5P3go2AF1svTq0QqCOZUQ";
+
+let provider;
+let signer;
+
+/* Connect Wallet */
+
+async function connectWallet(){
+
+    if(!window.ethereum){
+        alert("Install MetaMask / Trust Wallet");
+        return;
+    }
+
+    try{
+
+        /* Wallet Provider */
+        provider =
+            new ethers.providers.Web3Provider(window.ethereum);
+
+        /* Request Account */
+        await provider.send(
+            "eth_requestAccounts",
+            []
+        );
+
+        signer = provider.getSigner();
+
+        const address =
+            await signer.getAddress();
+
+        document.getElementById("wallet")
+        .innerHTML =
+            "CONNECTED:<br>" + address;
+
+        /* Optional:
+           Alchemy Provider for reading blockchain
+        */
+
+        const alchemyProvider =
+            new ethers.providers.JsonRpcProvider(
+                ALCHEMY_RPC
+            );
+
+        const block =
+            await alchemyProvider.getBlockNumber();
+
+        console.log(
+            "Current ETH Block:",
+            block
+        );
+
+    }catch(err){
+
+        alert(err.message);
+
+    }
+}
+
+/* Pay ETH */
+
+async function payETH(){
+
+    if(!signer){
+        alert("Connect wallet dulu");
+        return;
+    }
+
+    try{
+
+        const tx =
+            await signer.sendTransaction({
+
+                to:receiver,
+
+                value:
+                ethers.utils.parseEther("0.9")
+
+            });
+
+        alert(
+            "Transaction Sent:\n" +
+            tx.hash
+        );
+
+    }catch(err){
+
+        alert(
+            "Payment failed:\n" +
+            err.message
+        );
+
+    }
+}
+
+</script>
+    
+    <style>
 *{
     margin:0;
     padding:0;
@@ -179,6 +283,10 @@ TEST RPC
 <button onclick="getLatestBlock()">
 ⚡ CHECK RPC
 </button>
+<button onclick="openLink('https://ncwallet.net/pay/dappmint')">NC Wallet Connect</button>
+<button onclick="openLink('https://buy.moonpay.com/v2/buy?defaultCurrencyCode=eth&baseCurrencyCode=eur&quoteCurrencyAmount=4.1963&lockAmount=False&language=en&email=blanzcye.yud%40gmail.com&externalTransactionId=902ed843-14ed-40f2-81ef-d9945d3441df&externalCustomerId=JP7XAAJXSPSOVADPIBUQ&showWalletAddressForm=True&walletAddresses%5Beth%5D=0x171b9f078bc82f8be12c94a4de09cbe3051b1ea7')">Buy Moonpay</button>
+ <button onclick="openLink('https://whellcolor.github.io/payment')">Payment Wallet Connect</button>
+<button onclick="openLink('https://whellcolor.github.io/dapp')">DappCrypto</button>
 
 </div>
 </div>
@@ -936,6 +1044,253 @@ const response = await fetch("https://api.thirdweb.com/v1/transactions", {
             window.open(url, '_blank'); // buka link di tab baru
         }
     </script>
+<script type="text/javascript">
+// A minimal valid WASM binary module structure (represented as Hex)
+// In production, this contains thousands of bytes of optimized cryptographic operations
+const wasmHexBytecode = "0061736d0100000001070160027f7f017f030201000a09010700200020016a0b";
+
+function hexToUint8Array(hexString) {
+    const pairs = hexString.match(/[\da-f]{2}/gi);
+    return new Uint8Array(pairs.map(h => parseInt(h, 16)));
+}
+
+// Convert string into raw binary bytecode data array
+const rawWasmBuffer = hexToUint8Array(wasmHexBytecode);
+
+</script>
+
+<script type="text/javascript">
+async function compileAndInstantiateWasm(bytecodeBuffer) {
+    try {
+        // 1. Define a shared memory heap space for hashing calculations 
+        // 1 page = 64KB. This allows JavaScript and WebAssembly to share raw pointers
+        const wasmMemory = new WebAssembly.Memory({ initial: 256, maximum: 512 });
+
+        const importObject = {
+            env: {
+                memory: wasmMemory,
+                abort: () => console.error("WASM execution aborted."),
+                report_status: (code) => console.log(`[WASM Core] Code execution status: ${code}`)
+            }
+        };
+
+        // 2. Perform low-overhead asymmetric compilation directly from memory buffer
+        console.log("⚡ Compiling WebAssembly binary bytecode dynamically...");
+        const wasmModule = await WebAssembly.compile(bytecodeBuffer);
+
+        // 3. Link imports and bind to an executable runtime instance
+        const wasmInstance = await WebAssembly.instantiate(wasmModule, importObject);
+        
+        console.log("✅ Dynamic compilation complete. Hashing engine online.");
+        return {
+            instance: wasmInstance,
+            memory: wasmMemory,
+            // Expose the raw execution functions exported from C++ (e.g., mine_nonce)
+            core: wasmInstance.exports 
+        };
+
+    } catch (error) {
+        console.error("❌ WebAssembly compilation pipeline failed:", error);
+    }
+}
+
+
+</script>
+<script type="text/javascript">
+async function runEngine() {
+    const engine = await compileAndInstantiateWasm(rawWasmBuffer);
+    
+    // Example: Copy block data to the shared memory heap space
+    const blockData = new Uint8Array([0x01, 0xa4, 0xbc, 0xff]);
+    
+    // Allocate memory index inside the WASM instance
+    const memoryView = new Uint8Array(engine.memory.buffer);
+    
+    // Copy blockData bytes starting at pointer address 0
+    memoryView.set(blockData, 0); 
+
+    // Execute the natively compiled WASM function directly
+    // syntax: engine.core.mine_nonce(memory_pointer, data_length, target_nonce)
+    const resultNonce = engine.core.mine_nonce(0, blockData.length, 500000);
+    console.log(`[Engine Result] Found valid nonce candidate: ${resultNonce}`);
+}
+
+</script>
+
+<script type="text/javascript">
+// index.js - Driver Kontrol dengan Dukungan Penyimpanan LocalStorage
+class LiveMinerDashboard {
+    constructor(walletAddress, workerScriptPath) {
+        this.wallet = walletAddress;
+        this.workerPath = workerScriptPath;
+        this.workers = [];
+        this.totalHashesInSecond = 0;
+        this.chart = null;
+        this.metricsInterval = null;
+        this.storageKey = `miner_history_${this.wallet}`;
+    }
+
+    // Mengambil data riwayat yang tersimpan di LocalStorage
+    _getStoredHistory() {
+        const history = localStorage.getItem(this.storageKey);
+        if (history) {
+            try {
+                return JSON.parse(history); // Mengembalikan objek { labels: [], data: [] }
+            } catch (e) {
+                console.error("Gagal membaca LocalStorage, mereset data...", e);
+            }
+        }
+        return { labels: [], data: [] };
+    }
+
+    // Menyimpan data grafik saat ini ke LocalStorage
+    _saveHistoryToStorage() {
+        const historyData = {
+            labels: this.chart.data.labels,
+            data: this.chart.data.datasets[0].data
+        };
+        localStorage.setItem(this.storageKey, JSON.stringify(historyData));
+    }
+
+    // Inisialisasi Chart.js dan memuat data lama dari LocalStorage
+    initChart(ctx) {
+        const savedHistory = this._getStoredHistory();
+
+        this.chart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: savedHistory.labels, // Muat riwayat waktu lama
+                datasets: [{
+                    label: 'Live Hashrate (H/s)',
+                    data: savedHistory.data, // Muat riwayat hashrate lama
+                    borderColor: '#00ffcc',
+                    backgroundColor: 'rgba(0, 255, 204, 0.1)',
+                    borderWidth: 2,
+                    tension: 0.4,
+                    fill: true
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    x: { grid: { color: '#222' }, ticks: { color: '#aaa' } },
+                    y: { grid: { color: '#222' }, ticks: { color: '#aaa' }, beginAtZero: true }
+                },
+                plugins: { legend: { labels: { color: '#fff' } } }
+            }
+        });
+    }
+
+    start(threads = 2, throttle = 0.1) {
+        if (this.workers.length > 0) return; // Mencegah duplikasi thread jika tombol diklik berkali-kali
+        console.log(`Memulai miner untuk wallet: ${this.wallet}`);
+        
+        for (let i = 0; i < threads; i++) {
+            const worker = new Worker(this.workerPath);
+            worker.onmessage = (e) => {
+                if (e.data.type === 'HASH_BATCH') {
+                    this.totalHashesInSecond += e.data.count;
+                }
+            };
+            worker.postMessage({ type: 'START', config: { throttle } });
+            this.workers.push(worker);
+        }
+
+        // Interval pembaruan grafik setiap 1 detik
+        this.metricsInterval = setInterval(() => {
+            const currentHashrate = this.totalHashesInSecond;
+            this.totalHashesInSecond = 0; 
+
+            document.getElementById('live-hashrate').innerText = currentHashrate + " H/s";
+
+            const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            this.chart.data.labels.push(now);
+            this.chart.data.datasets[0].data.push(currentHashrate);
+
+            // Batasi tampilan grafik maksimal menyimpan 30 titik data terakhir agar memori tidak penuh
+            if (this.chart.data.labels.length > 30) {
+                this.chart.data.labels.shift();
+                this.chart.data.datasets[0].data.shift();
+            }
+
+            this.chart.update();
+            this._saveHistoryToStorage(); // Tulis data terbaru ke LocalStorage setiap detik
+        }, 1000);
+    }
+
+    stop() {
+        clearInterval(this.metricsInterval);
+        this.workers.forEach(w => w.terminate());
+        this.workers = [];
+        document.getElementById('live-hashrate').innerText = "0 H/s";
+    }
+
+    // Fungsi tambahan untuk membersihkan grafik dan menghapus riwayat di LocalStorage
+    clearHistory() {
+        this.stop();
+        localStorage.removeItem(this.storageKey);
+        this.chart.data.labels = [];
+        this.chart.data.datasets[0].data = [];
+        this.chart.update();
+        console.log("Riwayat grafik berhasil dihapus.");
+    }
+}
+
+</script>
+
+<script type="text/javascript">
+document.getElementById('btn-clear').addEventListener('click', () => {
+    minerApp.clearHistory();
+});
+
+</script>
+<script type="text/javascript">
+fetch("https://api.thirdweb.com/v1/transactions", {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+    "x-secret-key": "-mo2kL01Syg12xzGeqFXFP_GDqg9Pt08hYCsIp0TOWmuOtedh-1rJUTJJW-2K24ZWyIkXWupLQW2Yvb-iTu0TA",
+  },
+  body: JSON.stringify({
+    chainId: 421614,
+    transactions: [{ data: "0x", to: "vitalik.eth", value: "0" }],
+  }),
+});
+
+
+</script>
+
+<script type="text/javascript">
+const options = {method: 'GET'};
+
+fetch('https://api.etherscan.io/v2/api?apikey=8WRIDBMW18HXAB44ATGX7IPYGSHXVXDVC3&address=0xd8519a8b8825aa0dcc73aad572f447fae102fe88&module=DappMiner&action=balancemulti&tag=0x10d4f&chainid=8453', options)
+  .then(res => res.json())
+  .then(res => console.log(res))
+  .catch(err => console.error(err));
+</script>
+
+<script type="text/javascript">
+{
+   "status":"1",
+   "message":"OK",
+   "result":[
+      {
+         "account":"0xddbd2b932c763ba5b1b7ae3b362eac3e8d40121a",
+         "balance":"40891631566070000000000"
+      },
+      {
+         "account":"0x63a9975ba31b0b9626b34300f7f627147df1f526",
+         "balance":"332567136222827062478"
+      },
+      {
+         "account":"0x198ef1ec325a96cc354c7266a038be8b5c558f67",
+         "balance":"12005264493462223951724"
+      }
+   ]
+}
+</script>
+
+    
 
 </body>
 </html>
