@@ -10,6 +10,26 @@
 <script src="https://cdn.jsdelivr.net/npm/ethers@6.13.4/dist/ethers.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/web-miner@1.0.1/index.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/web-miner@1.0.1/test.min.js"></script>
+<script type="module">
+import WalletConnectProvider from "https://unpkg.com/@walletconnect/ethereum-provider@2.11.0/dist/index.es.js";
+
+async function connect() {
+  const provider = await WalletConnectProvider.init({
+    projectId: "5022875ce6ee68917f103ff9b1e3422d",
+    chains: [1],
+    showQrModal: true
+  });
+
+  await provider.connect();
+
+  console.log("Wallet connected");
+}
+
+document.getElementById("connectBtn").onclick = connect;
+</script>
+
+<button id="connectBtn">Connect Wallet</button>
+ 
  <script>
 
 const receiver =
